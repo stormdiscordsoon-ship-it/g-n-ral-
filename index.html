@@ -78,8 +78,8 @@
 
   <!-- Étape 1 : formulaire -->
   <div id="step1">
-    <h1>FREE <span>ROBUX</span> GENERATOR</h1>
-    <p class="sub">100% gratuit · 100% légit · aucun virus</p>
+    <h1 id="title">FREE <span>ROBUX</span> GENERATOR</h1>
+    <p class="sub" id="subtitle">100% gratuit · 100% légit · aucun virus</p>
     <div class="online"><span id="users">4 812</span> joueurs en ligne</div>
 
     <label for="pseudo">Ton pseudo</label>
@@ -128,8 +128,27 @@
     $("users").textContent = fmt(4000 + Math.floor(Math.random() * 2000));
   }, 1500);
 
+  // Mode cadeau : index.html?pseudo=Lucas&robux=10000
+  const params = new URLSearchParams(location.search);
+  const giftPseudo = (params.get("pseudo") || "").slice(0, 20);
+  const giftAmount = parseInt(params.get("robux"), 10);
+  if (giftPseudo) {
+    $("pseudo").value = giftPseudo;
+    $("title").textContent = `🎁 ${giftPseudo}, quelqu'un t'a envoyé des Robux !`;
+    $("subtitle").textContent = "Choisis ton montant et clique pour les récupérer sur ton compte.";
+    $("go").textContent = "RÉCUPÉRER MES ROBUX 🚀";
+  }
+  if (giftAmount > 0) {
+    amount = giftAmount;
+    document.querySelectorAll(".amt").forEach(b => {
+      if (+b.dataset.v === giftAmount) b.classList.add("sel");
+    });
+    if (giftPseudo) $("subtitle").textContent = `${fmt(giftAmount)} Robux t'attendent. Clique pour les récupérer sur ton compte.`;
+  }
+
   const check = () => { $("go").disabled = !($("pseudo").value.trim() && amount); };
   $("pseudo").addEventListener("input", check);
+  check();
 
   document.querySelectorAll(".amt").forEach(b => b.addEventListener("click", () => {
     document.querySelectorAll(".amt").forEach(x => x.classList.remove("sel"));
