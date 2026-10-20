@@ -275,6 +275,14 @@
   @keyframes pulse{50%{opacity:.25}}
   .gone{opacity:0 !important;pointer-events:none !important}
 
+  #nosound{
+    position:fixed; left:clamp(.8rem,3vw,2rem); top:clamp(.8rem,3vw,2rem);
+    z-index:98; opacity:0; pointer-events:none;
+    font-family:'Bebas Neue',sans-serif; letter-spacing:.2em;
+    font-size:clamp(.55rem,1.8vw,.78rem); color:#9aa0b0;
+    background:rgba(0,0,0,.6); border:1px solid #333a4d;
+    padding:.5em .9em .4em; transition:opacity .6s;
+  }
   #replay{
     position:fixed; right:clamp(.8rem,3vw,2rem); top:clamp(.8rem,3vw,2rem);
     z-index:98; opacity:0; pointer-events:none;
@@ -338,6 +346,7 @@
   <div class="layer" id="blackout"></div>
 </div>
 
+<div id="nosound">🔇 SON INDISPONIBLE DANS CE LECTEUR</div>
 <div id="replay">↻ REJOUER</div>
 
 <div id="start">
@@ -788,7 +797,8 @@ function reset(){
      stats, le bandeau et le fondu au noir figés sur leur état final.
      On épargne les animations CSS (rotation des rayons, balayage doré),
      reconnaissables à leur animationName. */
-  document.getAnimations().forEach(a => { if (!a.animationName) a.cancel(); });
+  if (document.getAnimations)
+    document.getAnimations().forEach(a => { if (!a.animationName) a.cancel(); });
   parts = []; rings = [];
   shakeAmp = shakeRot = 0; camScale = camScaleT = 1; slowZoom = 0;
   speedSpin = 0; speedEl.style.opacity = 0; speedEl.style.transform = '';
@@ -1022,9 +1032,35 @@ function run(){
 /* ════════════════════════════════════════════════════════════
    6. DÉMARRAGE
    ════════════════════════════════════════════════════════════ */
+/* Le son est un bonus, jamais un prérequis : si l'AudioContext est refusé
+   (aperçu en bac à sable, navigateur restrictif, politique de permission),
+   l'intro doit se jouer en silence plutôt que de ne rien faire du tout. */
+const SILENCE = {
+  boom(){}, crash(){}, riser(){}, glitch(){}, tick(){}, chord(){}, shimmer(){},
+  ctx:{ state:'running', resume(){} }
+};
+/* Et un appel sonore qui échoue en cours de route ne doit pas emporter
+   l'étape visuelle planifiée dans le même callback. */
+function guardAudio(src){
+  const g = { ctx: src.ctx };
+  for (const k of ['boom','crash','riser','glitch','tick','chord','shimmer'])
+    g[k] = (...a) => { try { src[k](...a); } catch(_){} };
+  return g;
+}
+
+let audioOff = false;
 function boot(){
-  if (!A) A = new Audio_();
-  if (A.ctx.state === 'suspended') A.ctx.resume();
+  if (!A){
+    try {
+      A = guardAudio(new Audio_());
+    } catch(_){
+      A = guardAudio(SILENCE);
+      audioOff = true;
+      $('#nosound').style.opacity = 1;
+      setTimeout(() => { $('#nosound').style.opacity = 0; }, 4000);
+    }
+  }
+  try { if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume(); } catch(_){}
   $('#start').classList.add('gone');
   run();
 }
