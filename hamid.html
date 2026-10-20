@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HAMID LE ZGG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#ff2d2d;
+    --gold:#ffd24a;
+    --cyan:#33e7ff;
+    --mag:#ff2bd6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#000}
+  body{
+    font-family:'Anton','Archivo Black',system-ui,sans-serif;
+    color:#fff;
+    -webkit-font-smoothing:antialiased;
+    cursor:default;
+  }
+
+  /* ── CAMÉRA : tout tremble / zoome ici ─────────────────── */
+  #camera{
+    position:fixed; inset:0;
+    will-change:transform;
+    transform-origin:50% 50%;
+  }
+  .layer{position:absolute;inset:0;pointer-events:none}
+
+  /* ── FOND : glow, grille perspective, rayons ───────────── */
+  #glow{
+    background:radial-gradient(ellipse 70% 55% at 50% 50%, rgba(255,45,45,.30), transparent 70%);
+    opacity:0; transition:opacity .4s;
+  }
+  #rays{
+    background:conic-gradient(from 0deg,
+      transparent 0 6deg, rgba(255,210,74,.13) 6deg 11deg,
+      transparent 11deg 24deg, rgba(255,210,74,.09) 24deg 28deg,
+      transparent 28deg 45deg, rgba(255,210,74,.14) 45deg 50deg,
+      transparent 50deg 70deg, rgba(255,210,74,.08) 70deg 74deg,
+      transparent 74deg 95deg, rgba(255,210,74,.13) 95deg 100deg,
+      transparent 100deg 125deg, rgba(255,210,74,.10) 125deg 129deg,
+      transparent 129deg 150deg, rgba(255,210,74,.14) 150deg 155deg,
+      transparent 155deg 180deg, rgba(255,210,74,.09) 180deg 184deg,
+      transparent 184deg 210deg, rgba(255,210,74,.13) 210deg 215deg,
+      transparent 215deg 240deg, rgba(255,210,74,.08) 240deg 244deg,
+      transparent 244deg 265deg, rgba(255,210,74,.14) 265deg 270deg,
+      transparent 270deg 295deg, rgba(255,210,74,.10) 295deg 299deg,
+      transparent 299deg 320deg, rgba(255,210,74,.13) 320deg 325deg,
+      transparent 325deg 350deg, rgba(255,210,74,.09) 350deg 354deg,
+      transparent 354deg 360deg);
+    opacity:0;
+    animation:spin 18s linear infinite;
+    mask-image:radial-gradient(circle at 50% 50%, #000 15%, transparent 68%);
+    -webkit-mask-image:radial-gradient(circle at 50% 50%, #000 15%, transparent 68%);
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  #grid{
+    position:absolute; left:-60%; right:-60%; bottom:-10%; height:70%;
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0 84px, rgba(255,45,45,.55) 84px 86px),
+      repeating-linear-gradient(0deg,  transparent 0 84px, rgba(255,45,45,.35) 84px 86px);
+    transform:perspective(420px) rotateX(74deg);
+    transform-origin:bottom center;
+    mask-image:linear-gradient(to top,#000 10%, transparent 80%);
+    -webkit-mask-image:linear-gradient(to top,#000 10%, transparent 80%);
+    opacity:0;
+    animation:gridrun 1.1s linear infinite;
+  }
+  @keyframes gridrun{to{background-position:0 86px, 0 86px}}
+
+  /* traits de vitesse */
+  #speed{
+    background:repeating-conic-gradient(from 0deg at 50% 50%,
+      rgba(255,255,255,.5) 0deg .25deg, transparent .25deg 3deg);
+    mask-image:radial-gradient(circle at 50% 50%, transparent 28%, #000 48%, transparent 72%);
+    -webkit-mask-image:radial-gradient(circle at 50% 50%, transparent 28%, #000 48%, transparent 72%);
+    opacity:0;
+    will-change:transform,opacity;
+  }
+
+  /* ── TEXTE ─────────────────────────────────────────────── */
+  #content{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding:2vh 3vw 12vh;      /* réserve la place du bandeau de succès */
+  }
+  .wordwrap{position:relative; will-change:transform; transform:translateZ(0)}
+  /* min(vw,vh) : la taille suit AUSSI la hauteur, sinon en 16:9 le bloc
+     dépasse du cadre et les éléments du bas passent hors écran */
+  .word{
+    display:flex; white-space:nowrap;
+    font-size:clamp(2rem, min(30vw, 30vh), 15rem);
+    line-height:.86;
+    letter-spacing:-.025em;
+    text-transform:uppercase;
+    transform:skewX(-7deg);
+  }
+  #zgg .word{font-size:clamp(1.7rem, min(23vw, 23vh), 11.5rem)}
+  .ltr{
+    display:inline-block;
+    will-change:transform,opacity,filter;
+    color:#fff;
+    text-shadow:
+      0 0 .02em #fff,
+      0 .055em 0 #7c0c0c,
+      0 .09em 0 #490505,
+      0 .1em .06em rgba(0,0,0,.9),
+      0 0 .35em rgba(255,45,45,.85),
+      0 0 1.1em rgba(255,45,45,.55);
+  }
+  /* calques d'aberration chromatique / glitch */
+  .ghost{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    mix-blend-mode:screen;
+    pointer-events:none;
+    opacity:0;
+    will-change:transform,opacity,clip-path;
+  }
+  .ghost .word{text-shadow:none}
+  .ghost.r .ltr{color:var(--red); text-shadow:none}
+  .ghost.c .ltr{color:var(--cyan); text-shadow:none}
+
+  /* état doré final */
+  /* text-shadow plutôt que filter:drop-shadow — pas de passe de filtre
+     sur tout l'élément à chaque frame */
+  .gold .ltr{
+    color:transparent;
+    background:linear-gradient(100deg,#8a5a00 0%,#ffd24a 18%,#fff6cf 32%,#ffd24a 46%,#a06c00 62%,#ffd24a 80%,#fff6cf 100%);
+    background-size:300% 100%;
+    -webkit-background-clip:text; background-clip:text;
+    text-shadow:
+      0 .05em 0 #4a2d00,
+      0 .07em .02em rgba(0,0,0,.85),
+      0 0 .35em rgba(255,210,74,.75),
+      0 0 1.2em rgba(255,160,0,.45);
+    animation:sweep 2.6s linear infinite;
+  }
+  @keyframes sweep{to{background-position:300% 0}}
+
+  /* ── HUD / textes secondaires ──────────────────────────── */
+  .hud{font-family:'Bebas Neue',sans-serif; letter-spacing:.22em}
+
+  #loading{
+    position:absolute; left:0; right:0; top:50%;
+    transform:translateY(-50%);
+    text-align:center;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:clamp(.75rem,2.6vw,1.4rem);
+    letter-spacing:.5em; color:#ff6a6a; opacity:0;
+    text-shadow:0 0 1em rgba(255,45,45,.9);
+  }
+
+  #alert{
+    transform:scaleY(.4);
+    opacity:0;
+    margin-bottom:clamp(.5rem,1.6vh,1.4rem);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:clamp(.62rem,min(2.4vw,2.1vh),1.4rem);
+    letter-spacing:.3em;
+    color:#0a0000;
+    background:var(--red);
+    padding:.4em 1.1em .3em;
+    white-space:nowrap;
+    box-shadow:0 0 2.5em rgba(255,45,45,.85);
+    clip-path:polygon(2% 0,100% 0,98% 100%,0 100%);
+  }
+
+  #stats{
+    display:flex; gap:clamp(.4rem,2.2vw,2.2rem);
+    margin-top:clamp(.7rem,2.4vh,2rem);
+    font-family:'Bebas Neue',sans-serif;
+    white-space:nowrap;
+  }
+  .stat{
+    opacity:0; transform:translateY(1.4em) skewX(-10deg);
+    border:2px solid rgba(255,210,74,.55);
+    background:linear-gradient(180deg,rgba(255,210,74,.14),rgba(0,0,0,.6));
+    padding:.3em .85em .2em;
+    text-align:center;
+    will-change:transform,opacity;
+    box-shadow:0 0 1.6em rgba(255,210,74,.3), inset 0 0 1.4em rgba(255,210,74,.12);
+  }
+  .stat b{display:block;font-size:clamp(.95rem,3.4vw,2.1rem);color:var(--gold);line-height:1;letter-spacing:.06em}
+  .stat i{display:block;font-style:normal;font-size:clamp(.5rem,1.6vw,.78rem);letter-spacing:.3em;color:#ffead0;opacity:.75;margin-top:.25em}
+
+  /* badge de rang */
+  #rank{
+    position:absolute;
+    right:clamp(1.1rem,5vw,5rem);
+    top:clamp(2.5rem,13vh,9rem);
+    transform:rotate(14deg) scale(6);
+    transform-origin:center;
+    opacity:0;
+    font-size:clamp(1.8rem,min(8vw,13vh),6rem);
+    color:var(--gold);
+    text-shadow:0 0 .04em var(--gold), 0 .05em 0 #5b3a00, 0 0 .5em rgba(255,210,74,.9), 0 0 1.6em rgba(255,140,0,.7);
+    will-change:transform,opacity;
+  }
+
+  /* succès débloqué (humour gaming) */
+  #achv{
+    position:absolute; left:50%; bottom:clamp(1.6rem,4.5vh,3rem);
+    max-width:94vw;
+    transform:translate(-50%,160%);
+    display:flex; align-items:center; gap:.7em;
+    background:linear-gradient(90deg,rgba(0,0,0,.92),rgba(40,22,0,.92));
+    border-left:4px solid var(--gold);
+    padding:.55em 1.3em .5em .9em;
+    font-family:'Bebas Neue',sans-serif;
+    white-space:nowrap;
+    box-shadow:0 0 2.2em rgba(255,210,74,.35);
+    will-change:transform;
+  }
+  #achv .ico{font-size:clamp(1.1rem,3.6vw,1.9rem);filter:drop-shadow(0 0 .3em var(--gold))}
+  #achv .t1{font-size:clamp(.5rem,1.7vw,.8rem);letter-spacing:.34em;color:var(--gold)}
+  #achv .t2{font-size:clamp(.72rem,2.5vw,1.2rem);letter-spacing:.12em;color:#fff}
+
+  #sub{
+    text-align:center;
+    margin-top:clamp(.4rem,1.6vh,1.2rem);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:clamp(.55rem,min(2vw,1.9vh),1.2rem);
+    letter-spacing:.62em; text-indent:.62em;
+    color:var(--gold); opacity:0;
+    text-shadow:0 0 1em rgba(255,210,74,.8);
+    will-change:opacity,letter-spacing;
+  }
+
+  /* ── POST-PROCESS ──────────────────────────────────────── */
+  #fx{position:absolute;inset:0;mix-blend-mode:screen}
+  #scan{
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.42) 0 1px, transparent 1px 3px);
+    opacity:.5; mix-blend-mode:multiply;
+  }
+  #tracking{
+    position:absolute;left:0;right:0;height:9vh;
+    background:linear-gradient(180deg,transparent,rgba(255,255,255,.1),transparent);
+    opacity:0; mix-blend-mode:overlay;
+  }
+  #vig{
+    background:radial-gradient(ellipse 80% 70% at 50% 50%, transparent 38%, rgba(0,0,0,.82) 100%);
+  }
+  #flash{background:#fff;opacity:0;will-change:opacity}
+  #blackout{background:#000;opacity:1;will-change:opacity}
+
+  /* ── ÉCRAN DE DÉPART / REPLAY ──────────────────────────── */
+  #start{
+    position:fixed; inset:0; z-index:99;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1.6rem; background:#000; cursor:pointer;
+    transition:opacity .35s;
+  }
+  #start h1{
+    font-size:clamp(1.5rem,7vw,4.4rem); letter-spacing:-.02em;
+    color:#fff; text-shadow:0 0 .4em rgba(255,45,45,.8), 0 .05em 0 #6b0a0a;
+    transform:skewX(-7deg); text-align:center; line-height:.9;
+  }
+  #start p{
+    font-family:'Bebas Neue',sans-serif; font-size:clamp(.72rem,2.4vw,1.1rem);
+    letter-spacing:.42em; color:#ff6a6a;
+    animation:pulse 1.5s ease-in-out infinite;
+  }
+  #start small{
+    font-family:'Bebas Neue',sans-serif; letter-spacing:.24em;
+    font-size:clamp(.56rem,1.8vw,.78rem); color:#5a5a5a;
+  }
+  @keyframes pulse{50%{opacity:.25}}
+  .gone{opacity:0 !important;pointer-events:none !important}
+
+  #replay{
+    position:fixed; right:clamp(.8rem,3vw,2rem); top:clamp(.8rem,3vw,2rem);
+    z-index:98; opacity:0; pointer-events:none;
+    font-family:'Bebas Neue',sans-serif; letter-spacing:.26em;
+    font-size:clamp(.6rem,2vw,.85rem);
+    color:var(--gold); background:rgba(0,0,0,.55);
+    border:1px solid rgba(255,210,74,.5);
+    padding:.6em 1.1em .5em; cursor:pointer;
+    transition:opacity .5s, background .2s;
+  }
+  #replay.on{opacity:.85;pointer-events:auto}
+  #replay:hover{background:rgba(255,210,74,.18)}
+</style>
+</head>
+<body>
+
+<div id="camera">
+  <div class="layer" id="glow"></div>
+  <div class="layer" id="rays"></div>
+  <div id="grid"></div>
+  <div class="layer" id="speed"></div>
+
+  <!-- tout est dans le flux : rien ne peut se chevaucher ni sortir du cadre -->
+  <div id="content">
+    <div id="alert">⚠ NIVEAU DE ZGG CRITIQUE ⚠</div>
+    <div class="wordwrap" id="hamid">
+      <div class="word" data-text="HAMID"></div>
+      <div class="ghost r"><div class="word" data-text="HAMID"></div></div>
+      <div class="ghost c"><div class="word" data-text="HAMID"></div></div>
+    </div>
+    <div class="wordwrap" id="zgg">
+      <div class="word" data-text="LE ZGG"></div>
+      <div class="ghost r"><div class="word" data-text="LE ZGG"></div></div>
+      <div class="ghost c"><div class="word" data-text="LE ZGG"></div></div>
+    </div>
+    <div id="sub">LÉGENDE VIVANTE · EST. 2026</div>
+    <div id="stats">
+      <div class="stat"><b>999</b><i>SWAG</i></div>
+      <div class="stat"><b>∞</b><i>RIZZ</i></div>
+      <div class="stat"><b>0</b><i>DÉFAITE</i></div>
+      <div class="stat"><b>S+++</b><i>ZGG</i></div>
+    </div>
+  </div>
+
+  <div id="loading">CHARGEMENT DU ZGG</div>
+  <div id="rank" class="hud">S+++</div>
+
+  <div id="achv">
+    <span class="ico">🏆</span>
+    <span>
+      <span class="t1">SUCCÈS DÉBLOQUÉ</span>
+      <span class="t2">DEVENIR LE ZGG ULTIME</span>
+    </span>
+  </div>
+
+  <canvas class="layer" id="fx"></canvas>
+  <div class="layer" id="scan"></div>
+  <div id="tracking"></div>
+  <div class="layer" id="vig"></div>
+  <div class="layer" id="flash"></div>
+  <div class="layer" id="blackout"></div>
+</div>
+
+<div id="replay">↻ REJOUER</div>
+
+<div id="start">
+  <h1>HAMID<br>LE ZGG</h1>
+  <p>CLIQUE POUR LANCER L'INTRO</p>
+  <small>SON RECOMMANDÉ 🔊 · PLEIN ÉCRAN F11</small>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const rnd = (a,b) => a + Math.random()*(b-a);
+const pick = a => a[(Math.random()*a.length)|0];
+
+/* ════════════════════════════════════════════════════════════
+   1. MOTEUR AUDIO — tout est synthétisé, aucun fichier externe
+   ════════════════════════════════════════════════════════════ */
+class Audio_ {
+  constructor(){
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.out = this.ctx.createGain();
+    this.out.gain.value = .85;
+    // compresseur pour que les impacts claquent sans saturer
+    this.comp = this.ctx.createDynamicsCompressor();
+    this.comp.threshold.value = -16; this.comp.ratio.value = 7;
+    this.comp.attack.value = .003; this.comp.release.value = .18;
+    this.out.connect(this.comp).connect(this.ctx.destination);
+    this._noise = null;
+  }
+  get t(){ return this.ctx.currentTime; }
+
+  noiseBuf(){
+    if (this._noise) return this._noise;
+    const n = this.ctx.sampleRate * 2;
+    const b = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i=0;i<n;i++) d[i] = Math.random()*2-1;
+    return this._noise = b;
+  }
+  noise(){ const s = this.ctx.createBufferSource(); s.buffer = this.noiseBuf(); s.loop = true; return s; }
+
+  /** 808 : chute de fréquence profonde + clic d'attaque */
+  boom(at=0, f0=190, f1=32, dur=1.25, vol=1){
+    const t = this.t + at, c = this.ctx;
+    const o = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur*.72);
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t);
+    lp.frequency.exponentialRampToValueAtTime(110, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + .006);
+    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(lp).connect(g).connect(this.out);
+    o.start(t); o.stop(t + dur + .05);
+    // clic d'attaque
+    const n = this.noise(), ng = c.createGain(), hp = c.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 1400;
+    ng.gain.setValueAtTime(vol*.5, t);
+    ng.gain.exponentialRampToValueAtTime(.0001, t + .09);
+    n.connect(hp).connect(ng).connect(this.out);
+    n.start(t); n.stop(t + .12);
+  }
+
+  /** crash / cymbale pour accompagner l'impact */
+  crash(at=0, dur=.9, vol=.42){
+    const t = this.t + at, c = this.ctx;
+    const n = this.noise(), g = c.createGain(), hp = c.createBiquadFilter();
+    hp.type='highpass'; hp.frequency.setValueAtTime(5200,t);
+    hp.frequency.exponentialRampToValueAtTime(2200, t+dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    n.connect(hp).connect(g).connect(this.out);
+    n.start(t); n.stop(t + dur + .05);
+  }
+
+  /** montée de tension */
+  riser(at=0, dur=1.1, f0=70, f1=1500, vol=.3){
+    const t = this.t + at, c = this.ctx;
+    const o = c.createOscillator(), g = c.createGain(), bp = c.createBiquadFilter();
+    o.type='sawtooth';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    bp.type='bandpass'; bp.Q.value=4;
+    bp.frequency.setValueAtTime(f0*3, t);
+    bp.frequency.exponentialRampToValueAtTime(f1*1.6, t + dur);
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + dur*.92);
+    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(bp).connect(g).connect(this.out);
+    o.start(t); o.stop(t + dur + .05);
+    // souffle qui monte
+    const n = this.noise(), ng = c.createGain(), nb = c.createBiquadFilter();
+    nb.type='bandpass'; nb.Q.value=1.6;
+    nb.frequency.setValueAtTime(320, t);
+    nb.frequency.exponentialRampToValueAtTime(8000, t + dur);
+    ng.gain.setValueAtTime(.0001, t);
+    ng.gain.exponentialRampToValueAtTime(vol*.8, t + dur*.9);
+    ng.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    n.connect(nb).connect(ng).connect(this.out);
+    n.start(t); n.stop(t + dur + .05);
+  }
+
+  /** bruit de glitch numérique */
+  glitch(at=0, dur=.075, vol=.3){
+    const t = this.t + at, c = this.ctx;
+    const n = this.noise(), g = c.createGain(), bp = c.createBiquadFilter();
+    bp.type='bandpass'; bp.Q.value=rnd(2,9);
+    bp.frequency.value = rnd(400, 5200);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.setValueAtTime(vol*.3, t + dur*.5);
+    g.gain.setValueAtTime(.0001, t + dur);
+    n.connect(bp).connect(g).connect(this.out);
+    n.start(t); n.stop(t + dur + .02);
+  }
+
+  /** petit tic sec (arrivée d'une lettre) */
+  tick(at=0, f=1500, vol=.14){
+    const t = this.t + at, c = this.ctx;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type='square'; o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f*.4, t + .045);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(.0001, t + .05);
+    o.connect(g).connect(this.out);
+    o.start(t); o.stop(t + .07);
+  }
+
+  /** accord épique (fin) */
+  chord(at=0, dur=3.4, vol=.1){
+    const t = this.t + at, c = this.ctx;
+    [110, 164.81, 220, 277.18, 329.63, 440].forEach((f,i)=>{
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = i<2 ? 'triangle' : 'sine';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t);
+      g.gain.linearRampToValueAtTime(vol/(1+i*.3), t + .06);
+      g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(this.out);
+      o.start(t); o.stop(t + dur + .05);
+    });
+  }
+
+  /** paillettes dorées */
+  shimmer(at=0, vol=.1){
+    const t = this.t + at, c = this.ctx;
+    for (let i=0;i<14;i++){
+      const o = c.createOscillator(), g = c.createGain();
+      const st = t + i*.045;
+      o.type='sine'; o.frequency.value = rnd(1800, 6200);
+      g.gain.setValueAtTime(.0001, st);
+      g.gain.linearRampToValueAtTime(vol, st + .01);
+      g.gain.exponentialRampToValueAtTime(.0001, st + .5);
+      o.connect(g).connect(this.out);
+      o.start(st); o.stop(st + .55);
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   2. CAMÉRA — tremblement + punch de zoom
+   ════════════════════════════════════════════════════════════ */
+const cam = $('#camera');
+let shakeAmp = 0, shakeRot = 0, camScale = 1, camScaleT = 1, slowZoom = 0;
+
+function shake(amp, rot=0){
+  shakeAmp = Math.max(shakeAmp, amp);
+  shakeRot = Math.max(shakeRot, rot);
+}
+function punch(s){ camScale = s; }
+
+/* ════════════════════════════════════════════════════════════
+   3. PARTICULES — canvas additif
+   ════════════════════════════════════════════════════════════ */
+const cv = $('#fx'), cx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+  W = cv.width  = innerWidth  * DPR;
+  H = cv.height = innerHeight * DPR;
+  cv.style.width = innerWidth + 'px';
+  cv.style.height = innerHeight + 'px';
+}
+addEventListener('resize', resize); resize();
+
+let parts = [], rings = [];
+const PAL = ['#ffffff','#ffd24a','#ff6a2d','#ff2d2d','#ffae3d'];
+const MAX_PARTS = 850;            // garde-fou : jamais de runaway
+/* qualité adaptative : si les frames décrochent (mobile, vieux GPU),
+   on réduit le nombre de particules plutôt que de laisser l'intro ramer */
+let quality = 1, frameAvg = 16.7;
+const room = n => Math.max(0, Math.min((n * quality) | 0, MAX_PARTS - parts.length));
+
+function sparks(n, opts={}){
+  n = room(n);
+  const cxp = (opts.x ?? .5) * W, cyp = (opts.y ?? .5) * H;
+  const spd = (opts.speed ?? 1) * DPR;
+  for (let i=0;i<n;i++){
+    const a = opts.angle !== undefined ? opts.angle + rnd(-.5,.5) : rnd(0, Math.PI*2);
+    const v = rnd(3, 26) * spd;
+    parts.push({
+      k:'s', x:cxp, y:cyp,
+      vx:Math.cos(a)*v, vy:Math.sin(a)*v*(opts.flat ? .35 : 1),
+      life:1, dec:rnd(.009,.028),
+      r:rnd(1.2,3.6)*DPR, col:pick(opts.pal || PAL), tail:rnd(4,16)
+    });
+  }
+}
+function debris(n, opts={}){
+  n = room(n);
+  const cxp = (opts.x ?? .5) * W, cyp = (opts.y ?? .5) * H;
+  for (let i=0;i<n;i++){
+    const a = rnd(0, Math.PI*2), v = rnd(4, 20)*DPR;
+    parts.push({
+      k:'d', x:cxp, y:cyp,
+      vx:Math.cos(a)*v, vy:Math.sin(a)*v - rnd(0,6)*DPR,
+      life:1, dec:rnd(.006,.016),
+      w:rnd(3,13)*DPR, h:rnd(1.5,5)*DPR,
+      rot:rnd(0,6.28), vrot:rnd(-.3,.3),
+      col:pick(opts.pal || PAL), g:rnd(.1,.45)*DPR
+    });
+  }
+}
+function fall(n){
+  n = room(n);
+  for (let i=0;i<n;i++){
+    parts.push({
+      k:'f', x:rnd(0,W), y:rnd(-H*.3,-10),
+      vx:rnd(-.4,.4)*DPR, vy:rnd(.6,2.4)*DPR,
+      life:1, dec:rnd(.0018,.005),
+      r:rnd(1,2.6)*DPR, col:pick(['#ffd24a','#fff6cf','#ffae3d']), tw:rnd(0,6.28)
+    });
+  }
+}
+function ring(opts={}){
+  rings.push({
+    x:(opts.x ?? .5)*W, y:(opts.y ?? .5)*H,
+    r:(opts.r0 ?? 10)*DPR, vr:(opts.vr ?? 16)*DPR,
+    w:(opts.w ?? 7)*DPR, a:1, dec:(opts.dec ?? .022),
+    col:opts.col || '#ffffff', sq:opts.sq || 0
+  });
+}
+
+/* Le glow vient d'une double passe (halo large translucide + cœur net)
+   en composite 'lighter'. shadowBlur donnerait le même rendu mais coûte
+   un ordre de grandeur de plus par particule et fait décrocher la frame. */
+/* dts : durée de la frame rapportée à 60 Hz. Toute la physique est
+   multipliée par ce facteur, sinon l'intro traîne sur machine lente et
+   défile deux fois trop vite sur un écran 120 Hz. */
+let dts = 1, dampS = .955, dampD = .985, dampR = .962;
+
+function drawFX(){
+  cx.clearRect(0,0,W,H);
+  cx.globalCompositeOperation = 'lighter';
+  cx.lineCap = 'round';
+  const maxR = Math.max(W,H) * 1.25;
+  const grav = .16 * DPR * dts;
+
+  // anneaux de choc
+  for (let i=rings.length-1;i>=0;i--){
+    const o = rings[i];
+    o.r += o.vr * dts; o.vr *= dampR; o.a -= o.dec * dts;
+    if (o.a <= 0 || o.r > maxR){ rings.splice(i,1); continue; }
+    const a = Math.max(0, o.a);
+    cx.save();
+    cx.translate(o.x, o.y);
+    if (o.sq) cx.scale(1, o.sq);
+    cx.strokeStyle = o.col;
+    cx.globalAlpha = a * .20;
+    cx.lineWidth = Math.max(1, o.w * a * 3.4);
+    cx.beginPath(); cx.arc(0,0,o.r,0,6.2832); cx.stroke();
+    cx.globalAlpha = a;
+    cx.lineWidth = Math.max(.6, o.w * a);
+    cx.beginPath(); cx.arc(0,0,o.r,0,6.2832); cx.stroke();
+    cx.restore();
+  }
+
+  // particules
+  for (let i=parts.length-1;i>=0;i--){
+    const p = parts[i];
+    p.life -= p.dec * dts;
+    if (p.life <= 0){ parts.splice(i,1); continue; }
+    const a = p.life < 1 ? p.life : 1;
+
+    if (p.k === 's'){
+      p.x += p.vx * dts; p.y += p.vy * dts;
+      p.vx *= dampS; p.vy = p.vy * dampS + grav;
+      const tx = p.x - p.vx*(p.tail/10), ty = p.y - p.vy*(p.tail/10);
+      cx.strokeStyle = p.col;
+      cx.beginPath(); cx.moveTo(p.x,p.y); cx.lineTo(tx,ty);
+      cx.globalAlpha = a * .25; cx.lineWidth = p.r * a * 3;
+      cx.stroke();
+      cx.globalAlpha = a;       cx.lineWidth = p.r * a;
+      cx.stroke();
+    } else if (p.k === 'd'){
+      p.x += p.vx * dts; p.y += p.vy * dts;
+      p.vx *= dampD; p.vy += p.g * dts; p.rot += p.vrot * dts;
+      cx.save(); cx.translate(p.x,p.y); cx.rotate(p.rot);
+      cx.fillStyle = p.col;
+      cx.globalAlpha = a * .22;
+      cx.fillRect(-p.w*.9, -p.h*1.5, p.w*1.8, p.h*3);
+      cx.globalAlpha = a;
+      cx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      cx.restore();
+    } else {
+      p.x += p.vx * dts; p.y += p.vy * dts; p.tw += .14 * dts;
+      const tw = a * (.5 + .5*Math.sin(p.tw));
+      cx.fillStyle = p.col;
+      cx.globalAlpha = tw * .25;
+      cx.beginPath(); cx.arc(p.x,p.y,p.r*2.8,0,6.2832); cx.fill();
+      cx.globalAlpha = tw;
+      cx.beginPath(); cx.arc(p.x,p.y,p.r,0,6.2832); cx.fill();
+      if (p.y > H + 20) p.life = 0;
+    }
+  }
+  cx.globalAlpha = 1;
+  cx.globalCompositeOperation = 'source-over';
+}
+
+/* boucle principale */
+const speedEl = $('#speed');
+let speedRot = 0, speedSpin = 0, lastFrame = performance.now();
+function loop(){
+  // suivi du budget de frame → qualité adaptative
+  const now = performance.now();
+  const dt = now - lastFrame; lastFrame = now;
+  if (dt < 500) frameAvg = frameAvg * .92 + dt * .08;   // ignore les gels (onglet masqué)
+  quality = frameAvg > 55 ? .3 : frameAvg > 34 ? .55 : 1;
+
+  // facteurs de temps, calculés une fois par frame et non par particule
+  dts   = Math.min(3, Math.max(.35, dt / 16.6667));
+  dampS = Math.pow(.955, dts);
+  dampD = Math.pow(.985, dts);
+  dampR = Math.pow(.962, dts);
+  const dampShake = Math.pow(.87, dts);
+
+  // caméra
+  camScaleT += (camScale - camScaleT) * (1 - Math.pow(.84, dts));
+  camScale  += (1 - camScale)         * (1 - Math.pow(.90, dts));
+  // doit retomber exactement à 0, sinon le zoom résiduel rogne les bords
+  slowZoom  *= Math.pow(.993, dts);
+  if (slowZoom < .002) slowZoom = 0;
+  const sx = (Math.random()*2-1) * shakeAmp;
+  const sy = (Math.random()*2-1) * shakeAmp;
+  const sr = (Math.random()*2-1) * shakeRot;
+  cam.style.transform =
+    `translate3d(${sx.toFixed(2)}px,${sy.toFixed(2)}px,0) rotate(${sr.toFixed(3)}deg) scale(${(camScaleT + slowZoom).toFixed(4)})`;
+  shakeAmp *= dampShake; shakeRot *= dampShake;
+  if (shakeAmp < .05) shakeAmp = 0;
+
+  // traits de vitesse
+  if (speedSpin > .001){
+    speedRot += speedSpin * dts;
+    speedSpin *= Math.pow(.94, dts);
+    speedEl.style.transform = `rotate(${speedRot}deg) scale(${1 + speedSpin*.1})`;
+  }
+
+  drawFX();
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* ════════════════════════════════════════════════════════════
+   4. HELPERS VISUELS
+   ════════════════════════════════════════════════════════════ */
+const flashEl = $('#flash');
+function flash(peak=1, dur=260){
+  flashEl.animate(
+    [{opacity:0},{opacity:peak,offset:.06},{opacity:0}],
+    {duration:dur, easing:'ease-out'}
+  );
+}
+
+/* glitch : décale les calques rouge/cyan + tranches aléatoires */
+function glitchBurst(wrapSel, times=4, snd=true){
+  const wrap = $(wrapSel);
+  const ghosts = [...wrap.querySelectorAll('.ghost')];
+  const main = wrap.querySelector('.word');
+  let i = 0;
+  const step = () => {
+    if (i++ >= times){
+      ghosts.forEach(g => { g.style.opacity = 0; g.style.transform = ''; g.style.clipPath = ''; });
+      main.style.transform = 'skewX(-7deg)';
+      main.style.clipPath = '';
+      return;
+    }
+    const d = rnd(6, 26);
+    ghosts[0].style.opacity = .95;
+    ghosts[1].style.opacity = .95;
+    ghosts[0].style.transform = `translate(${d}px, ${rnd(-5,5)}px)`;
+    ghosts[1].style.transform = `translate(${-d}px, ${rnd(-5,5)}px)`;
+    const y = rnd(5, 70);
+    const slice = `inset(${y}% 0 ${rnd(8,80-y>8?80-y:9)}% 0)`;
+    ghosts[0].style.clipPath = slice;
+    main.style.transform = `skewX(-7deg) translate(${rnd(-9,9)}px,0)`;
+    if (snd) A.glitch(0, .06, .22);
+    shake(rnd(3,9));
+    setTimeout(() => {
+      ghosts.forEach(g => { g.style.opacity = 0; g.style.transform=''; g.style.clipPath=''; });
+      main.style.transform = 'skewX(-7deg)';
+      setTimeout(step, rnd(35, 110));
+    }, rnd(40, 95));
+  };
+  step();
+}
+
+/* barre de tracking VHS qui traverse l'écran */
+function tracking(){
+  const t = $('#tracking');
+  t.animate(
+    [{top:'110%',opacity:.9},{top:'-15%',opacity:.9}],
+    {duration:420, easing:'linear'}
+  );
+}
+
+/* découpe un mot en lettres animables */
+function split(wrapSel){
+  const out = [];
+  $$(wrapSel + ' .word').forEach(w => {
+    const txt = w.dataset.text;
+    w.innerHTML = '';
+    const spans = [...txt].map(ch => {
+      const s = document.createElement('span');
+      s.className = 'ltr';
+      s.textContent = ch === ' ' ? ' ' : ch;
+      w.appendChild(s);
+      return s;
+    });
+    out.push(spans);
+  });
+  return out; // [main, ghostR, ghostC]
+}
+
+const A_EASE = 'cubic-bezier(.12,.9,.18,1)';
+
+/* ════════════════════════════════════════════════════════════
+   5. TIMELINE
+   ════════════════════════════════════════════════════════════ */
+let A = null;
+let timers = [];
+const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+
+function reset(){
+  timers.forEach(clearTimeout); timers = [];
+  /* Une animation WAAPI en fill:'forwards' garde la main sur la propriété
+     et masque le style inline : sans ce cancel, le rejeu garderait les
+     stats, le bandeau et le fondu au noir figés sur leur état final.
+     On épargne les animations CSS (rotation des rayons, balayage doré),
+     reconnaissables à leur animationName. */
+  document.getAnimations().forEach(a => { if (!a.animationName) a.cancel(); });
+  parts = []; rings = [];
+  shakeAmp = shakeRot = 0; camScale = camScaleT = 1; slowZoom = 0;
+  speedSpin = 0; speedEl.style.opacity = 0; speedEl.style.transform = '';
+  $('#blackout').style.opacity = 1;
+  $('#glow').style.opacity = 0;
+  $('#rays').style.opacity = 0;
+  $('#grid').style.opacity = 0;
+  $('#loading').style.opacity = 0;
+  $('#sub').style.opacity = 0;
+  $('#alert').style.opacity = 0;
+  $('#alert').style.transform = 'scaleY(.4)';
+  $('#rank').style.opacity = 0;
+  $('#rank').style.transform = 'rotate(14deg) scale(6)';
+  $('#achv').style.transform = 'translate(-50%,160%)';
+  $('#replay').classList.remove('on');
+  $$('.stat').forEach(s => { s.style.opacity = 0; s.style.transform = 'translateY(1.4em) skewX(-10deg)'; });
+  $$('.wordwrap').forEach(w => { w.classList.remove('gold'); w.style.transform = ''; w.style.opacity = ''; });
+  $$('.ghost').forEach(g => { g.style.opacity = 0; g.style.transform = ''; g.style.clipPath = ''; });
+}
+
+function run(){
+  reset();
+  const LH = split('#hamid'), LZ = split('#zgg');
+  // tout invisible au départ
+  [...LH, ...LZ].forEach(set => set.forEach(s => s.style.opacity = 0));
+
+  /* ─── 0 ms : noir, montée de tension ─────────────────── */
+  at(0, () => {
+    $('#blackout').animate([{opacity:1},{opacity:0}], {duration:600, fill:'forwards', easing:'ease-out'});
+    A.riser(0, 1.15, 60, 1400, .26);
+    $('#loading').animate([{opacity:0},{opacity:.9,offset:.3},{opacity:.9,offset:.8},{opacity:0}],
+      {duration:1100, fill:'forwards'});
+  });
+  at(150, () => { $('#glow').style.opacity = .35; $('#grid').style.opacity = .5; });
+  // micro-tremblement qui s'intensifie
+  for (let i=0;i<9;i++) at(260 + i*95, () => shake(1.5 + i*1.1, .03 + i*.02));
+  for (let i=0;i<6;i++) at(400 + i*140, () => A.tick(0, rnd(700,1300), .055));
+
+  /* ─── 1150 ms : IMPACT 1 — « HAMID » surgit ──────────── */
+  at(1150, () => {
+    A.boom(0, 210, 34, 1.4, 1);
+    A.crash(0, 1.0, .4);
+    flash(1, 300);
+    shake(46, .9);
+    punch(1.26);
+    speedEl.style.opacity = .55; speedSpin = 9;
+    $('#glow').style.opacity = .85;
+    $('#grid').style.opacity = 1;
+    ring({r0:20, vr:34, w:12, col:'#ffffff', dec:.019});
+    ring({r0:10, vr:21, w:26, col:'#ff2d2d', dec:.028});
+    sparks(130, {speed:1.5});
+    debris(45, {});
+
+    // les 3 calques (blanc + rouge + cyan) arrivent ensemble
+    LH.forEach((set, gi) => set.forEach((s, i) => {
+      const dir = i % 2 ? 1 : -1;
+      s.style.opacity = 1;
+      s.animate([
+        { transform:`scale(16) rotate(${dir*9}deg) translateY(${dir*14}px)`, filter:'blur(26px)', opacity:0 },
+        { transform:`scale(.9) rotate(${dir*-1.4}deg)`, filter:'blur(0px)', opacity:1, offset:.42 },
+        { transform:'scale(1.07) rotate(0deg)', filter:'blur(0px)', offset:.66 },
+        { transform:'scale(1) rotate(0deg)', filter:'blur(0px)' }
+      ], { duration: 620, easing: A_EASE, delay: gi*18, fill:'both' });
+    }));
+    // les fantômes repartent en fondu
+    at(640, () => $$('#hamid .ghost').forEach(g => g.style.opacity = 0));
+    LH[1][0] && $$('#hamid .ghost').forEach(g => g.style.opacity = .5);
+  });
+  at(1450, () => { tracking(); speedEl.style.opacity = .2; });
+  at(1620, () => { shake(10,.2); A.tick(0, 520, .1); });
+
+  /* ─── 1800 ms : rafale de glitch sur HAMID ───────────── */
+  at(1800, () => { glitchBurst('#hamid', 5); tracking(); });
+  at(2150, () => {
+    $('#alert').style.opacity = 1;
+    $('#alert').animate(
+      [{transform:'scaleY(.2) scaleX(1.4)', opacity:0},
+       {transform:'scaleY(1) scaleX(1)', opacity:1}],
+      {duration:220, easing:'cubic-bezier(.2,1.6,.3,1)', fill:'forwards'});
+    A.glitch(0,.09,.3); shake(12,.25);
+  });
+
+  /* ─── 2350 ms : 2e montée, plus courte et plus haute ─── */
+  at(2350, () => { A.riser(0, .72, 180, 2600, .24); speedEl.style.opacity = .5; speedSpin = 5; });
+  for (let i=0;i<7;i++) at(2400 + i*95, () => shake(3 + i*2.4, .04 + i*.03));
+
+  /* ─── 3080 ms : « LE ZGG » EXPLOSE ───────────────────── */
+  at(3080, () => {
+    A.boom(0, 150, 26, 1.7, 1);
+    A.crash(0, 1.3, .5);
+    flash(1, 220);
+    shake(40, .8);
+    punch(1.2);
+    ring({r0:14, vr:30, w:10, col:'#ffd24a', dec:.02});
+    sparks(90, {y:.58, speed:1.2});
+  });
+  // chaque lettre arrive de l'extérieur, en rotation, avec son tic
+  at(3080, () => {
+    const n = LZ[0].length;
+    LZ.forEach((set, gi) => set.forEach((s, i) => {
+      if (s.textContent === ' '){ s.style.opacity = 1; return; }
+      const ang = rnd(0, Math.PI*2), dist = rnd(80, 150);
+      const dx = Math.cos(ang)*dist, dy = Math.sin(ang)*dist;
+      const spin = rnd(-320, 320);
+      const dly = i * 52 + gi*14;
+      s.style.opacity = 1;
+      s.animate([
+        { transform:`translate(${dx}vmax,${dy}vmax) rotate(${spin}deg) scale(3.4)`, filter:'blur(14px)', opacity:0 },
+        { transform:`translate(0,0) rotate(0deg) scale(1.34)`, filter:'blur(0px)', opacity:1, offset:.7 },
+        { transform:'translate(0,0) rotate(0deg) scale(.94)', offset:.86 },
+        { transform:'translate(0,0) rotate(0deg) scale(1)' }
+      ], { duration: 520, delay: dly, easing: A_EASE, fill:'both' });
+      if (gi === 0) at(3080 + dly + 430 - 3080, () => {});
+    }));
+    // tics + micro-chocs synchronisés sur chaque lettre
+    for (let i=0;i<n;i++){
+      at(i*52 + 380, () => {
+        A.tick(0, 1700 - i*110, .16);
+        shake(7 + i*1.5, .1);
+        sparks(14, {y:.585, speed:.7});
+      });
+    }
+  });
+
+  /* ─── 3800 ms : VERROUILLAGE — méga impact ───────────── */
+  at(3800, () => {
+    A.boom(0, 240, 22, 2.2, 1);
+    A.crash(0, 1.9, .55);
+    A.chord(.02, 3.6, .085);
+    flash(1, 170);
+    at(130, () => flash(.85, 260));   // double flash
+    shake(62, 1.5);
+    punch(1.34);
+    slowZoom = .1;
+    speedEl.style.opacity = .7; speedSpin = 14;
+    $('#rays').style.opacity = 1;
+    $('#glow').style.opacity = 1;
+
+    ring({r0:16, vr:46, w:16, col:'#ffffff', dec:.014});
+    ring({r0:10, vr:30, w:30, col:'#ffd24a', dec:.019});
+    ring({r0:8,  vr:22, w:46, col:'#ff2d2d', dec:.026});
+    ring({r0:30, vr:52, w:8,  col:'#ffffff', dec:.017, sq:.28});
+    sparks(260, {speed:2});
+    debris(90, {});
+    tracking();
+
+    // passage à l'or
+    $$('.wordwrap').forEach(w => w.classList.add('gold'));
+    $$('.wordwrap').forEach(w => w.animate(
+      [{transform:'scale(1.12)'},{transform:'scale(.985)',offset:.55},{transform:'scale(1)'}],
+      {duration:700, easing:A_EASE}
+    ));
+    A.shimmer(.12, .085);
+  });
+
+  /* ─── 4000 ms : badge de rang S+++ ───────────────────── */
+  at(4020, () => {
+    const r = $('#rank');
+    r.style.opacity = 1;
+    r.animate([
+      {transform:'rotate(44deg) scale(7)', opacity:0, filter:'blur(18px)'},
+      {transform:'rotate(-7deg) scale(.88)', opacity:1, filter:'blur(0px)', offset:.6},
+      {transform:'rotate(14deg) scale(1.08)', offset:.82},
+      {transform:'rotate(14deg) scale(1)'}
+    ], {duration:520, easing:A_EASE, fill:'forwards'});
+    at(300, () => {
+      A.boom(0, 320, 70, .6, .65); A.tick(0, 2400, .2);
+      shake(26, .5); flash(.5, 150);
+      ring({x:.5 + 0.16, y:.5 - .1, r0:8, vr:24, w:9, col:'#ffd24a', dec:.026});
+      sparks(70, {x:.66, y:.4, speed:1.1});
+    });
+  });
+
+  /* ─── 4400 ms : stats qui claquent une par une ───────── */
+  $$('.stat').forEach((s, i) => at(4420 + i*95, () => {
+    s.style.opacity = 1;
+    s.animate([
+      {transform:'translateY(1.6em) skewX(-10deg) scale(1.5)', opacity:0},
+      {transform:'translateY(0) skewX(-10deg) scale(1)', opacity:1}
+    ], {duration:300, easing:'cubic-bezier(.15,1.5,.3,1)', fill:'forwards'});
+    A.tick(0, 900 + i*220, .13);
+    shake(9, .14);
+  }));
+
+  /* ─── 4900 ms : sous-titre légende ───────────────────── */
+  at(4900, () => {
+    const s = $('#sub');
+    s.style.opacity = 1;
+    s.animate([
+      {opacity:0, letterSpacing:'1.6em', filter:'blur(10px)'},
+      {opacity:1, letterSpacing:'.62em', filter:'blur(0px)'}
+    ], {duration:900, easing:'ease-out', fill:'forwards'});
+    A.shimmer(0, .055);
+  });
+
+  /* ─── 5250 ms : dernier hoquet de glitch ─────────────── */
+  at(5250, () => { glitchBurst('#zgg', 3); tracking(); shake(16,.3); });
+  at(5500, () => { glitchBurst('#hamid', 2); });
+
+  /* ─── 5700 ms : succès débloqué (la touche drôle) ───── */
+  at(5700, () => {
+    $('#achv').animate(
+      [{transform:'translate(-50%,160%)'},
+       {transform:'translate(-50%,-14%)', offset:.72},
+       {transform:'translate(-50%,0)'}],
+      {duration:560, easing:A_EASE, fill:'forwards'});
+    A.tick(0, 1800, .18); at(120, () => A.tick(0, 2400, .16));
+    A.shimmer(.1, .05);
+    shake(10,.15);
+  });
+
+  /* ─── 6000 ms : plan final, pluie d'or ───────────────── */
+  at(6000, () => {
+    fall(90);
+    slowZoom = .055;
+    A.shimmer(0, .06);
+    sparks(40, {y:.5, speed:.6, pal:['#ffd24a','#fff6cf']});
+  });
+  at(6100, () => fall(60));
+  // respiration finale
+  at(6300, () => {
+    $$('.wordwrap').forEach((w,i) => w.animate(
+      [{transform:'scale(1)'},{transform:'scale(1.022)'},{transform:'scale(1)'}],
+      {duration:3200, iterations:Infinity, delay:i*160, easing:'ease-in-out'}
+    ));
+  });
+  at(6600, () => { $('#replay').classList.add('on'); fall(50); });
+  at(7400, () => { fall(50); A.shimmer(0,.035); });
+}
+
+/* ════════════════════════════════════════════════════════════
+   6. DÉMARRAGE
+   ════════════════════════════════════════════════════════════ */
+function boot(){
+  if (!A) A = new Audio_();
+  if (A.ctx.state === 'suspended') A.ctx.resume();
+  $('#start').classList.add('gone');
+  run();
+}
+$('#start').addEventListener('click', boot);
+addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter'){
+    e.preventDefault();
+    if (!$('#start').classList.contains('gone')) boot(); else { $('#replay').classList.remove('on'); run(); }
+  }
+});
+$('#replay').addEventListener('click', () => { $('#replay').classList.remove('on'); run(); });
+</script>
+</body>
+</html>
